@@ -1,4 +1,12 @@
 <?php
+// Name: David Czerepak
+// Class: IT202 
+// HW 1 & 2 
+// Solve problems and push to github: 
+// https://github.com/Sirpak/dmc9-IT202-103.git
+
+
+
 $a1 = [-1, -2, -3, -4, -5, -6, -7, -8, -9, -10];
 $a2 = [-1, 1, -2, 2, 3, -3, -4, 5];
 $a3 = [-0.01, -0.0001, -.15];
@@ -12,6 +20,25 @@ function bePositive($arr) {
     //note: use the $arr variable, don't directly touch $a1-$a4
     //TODO Take each value of the $arr, convert it to positive, and set it to the same index in the $output array but with the original data type (i.e., if the source was a string the output slot value should be a string)
     
+    
+    
+    
+    foreach ($arr as $value){
+        // convert to +
+        $positiveValue = abs($value);
+
+        // Maintain orginal data type (string or number)
+        if (is_String($value)){
+            $output[] = (string)$positiveValue; //convert to str
+        } else {
+            $output[] = $positiveValue; // kee[ the #]
+        }
+    }
+
+
+
+
+
     //end edits
     
     //displays the output along with their types

@@ -1,4 +1,10 @@
 <?php
+// Name: David Czerepak
+// Class: IT202 
+// HW 1 & 2 
+// Solve problems and push to github: 
+// https://github.com/Sirpak/dmc9-IT202-103.git
+
 $a1 = [10.001, 11.591, 0.011, 5.991, 16.121, 0.131, 100.981, 1.001];
 $a2 = [1.99, 1.99, 0.99, 1.99, 0.99, 1.99, 0.99, 0.99];
 $a3 = [0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01];
@@ -11,6 +17,12 @@ function getTotal($arr) {
     //TODO do adding here
     //TODO do rounding stuff here (round to two decimals i.e., 0.10, 0.01, 0.00)
     
+    $total = array_sum($arr);       // calc the sum of arr
+    $total = number_format($total, 2); // format the total 
+
+
+
+
     //end edits
     echo "The total is $total";
 }

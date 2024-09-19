@@ -1,4 +1,14 @@
+
+
 <?php
+
+// Name: David Czerepak
+// Class: IT202 
+// HW 1 & 2 
+// Solve problems and push to github: 
+// https://github.com/Sirpak/dmc9-IT202-103.git
+
+
 $a1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 $a2 = [0, 1, 3, 5, 7, 9, 2, 4, 6, 8, 10];
 $a3 = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0];
@@ -9,6 +19,13 @@ function processArray($arr) {
     //start edits
     //note: use the $arr variable to iterate over, don't directly touch $a1-$a4
     //TODO add logic here to echo out only odd values
+    
+    foreach ($arr as $value) {
+        if ($value % 2 !=0) {  // check if odd
+            echo $value . " "; // echo out 
+        }
+    }
+    
     //end edits
 }
 echo "Problem 1: Odd Output<br>";
