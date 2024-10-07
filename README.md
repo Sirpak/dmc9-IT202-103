@@ -1,6 +1,6 @@
-# IT202 - Section 103
+# IT202 - Section 103 - NJIT
 Name: David
-I'm a student currently studying Information Systems/Computer Science, passionate 
+This repo is for NJIT 202, currently studying Information Systems/Computer Science, passionate 
 about coding and preparing for a career in software development. Some of the 
 technologies I know or have done projects in are:
 
