@@ -2,160 +2,139 @@
 include_once 'resource/Database.php';
 include_once 'resource/utilities.php';
 
-if(isset($_GET['u'])){
+if (isset($_GET['u'])) {
     $username = $_GET['u'];
 
-    $sqlQuery = "SELECT * FROM users WHERE username =:username";
+    $sqlQuery = "SELECT * FROM users WHERE username = :username";
     $statement = $db->prepare($sqlQuery);
-    $statement->execute(array(':username' => $username));
+    $statement->execute([':username' => $username]);
 
-    while($rs = $statement->fetch()){
+    while ($rs = $statement->fetch()) {
         $username = $rs['username'];
-        $profile_picture = $rs['avatar'];
-        $date_joined =  strftime("%b %d, %Y", strtotime($rs["join_date"]));
-
-        $rs['activated'] = 1 ? $status = "Activated" : $status = "Not Activated";
+        $profile_picture = isset($rs['avatar']) ? $rs['avatar'] : 'uploads/default.jpg';
+        $date_joined = date("M d, Y", strtotime($rs["join_date"]));
+        $status = $rs['activated'] == 1 ? "Activated" : "Not Activated";
     }
-}
-else if((isset($_SESSION['id']) || isset($_GET['user_identity'])) && !isset($_POST['updateProfileBtn'])){
-    if(isset($_GET['user_identity'])){
+} elseif ((isset($_SESSION['id']) || isset($_GET['user_identity'])) && !isset($_POST['updateProfileBtn'])) {
+    if (isset($_GET['user_identity'])) {
         $url_encoded_id = $_GET['user_identity'];
         $decode_id = base64_decode($url_encoded_id);
         $user_id_array = explode("encodeuserid", $decode_id);
         $id = $user_id_array[1];
-    }else{
+    } else {
         $id = $_SESSION['id'];
     }
 
     $sqlQuery = "SELECT * FROM users WHERE id = :id";
     $statement = $db->prepare($sqlQuery);
-    $statement->execute(array(':id' => $id));
+    $statement->execute([':id' => $id]);
 
-    while($rs = $statement->fetch()){
+    while ($rs = $statement->fetch()) {
         $username = $rs['username'];
         $email = $rs['email'];
-        $profile_picture = $rs['avatar'];
-        $date_joined =  strftime("%b %d, %Y", strtotime($rs["join_date"]));
+        $profile_picture = isset($rs['avatar']) ? $rs['avatar'] : 'uploads/default.jpg';
+        $date_joined = date("M d, Y", strtotime($rs["join_date"]));
     }
 
     $encode_id = base64_encode("encodeuserid{$id}");
+} elseif (isset($_POST['updateProfileBtn'], $_POST['token'])) {
+    if (validate_token($_POST['token'])) {
+        // Initialize an array to store error messages from the form
+        $form_errors = [];
 
-}
-else if(isset($_POST['updateProfileBtn'], $_POST['token'])){
+        // Form validation
+        $required_fields = ['email', 'username'];
+        $form_errors = array_merge($form_errors, check_empty_fields($required_fields));
 
-        if(validate_token($_POST['token'])){
-            //process the form
-            //initialize an array to store any error message from the form
-            $form_errors = array();
+        // Fields that require checking for minimum length
+        $fields_to_check_length = ['username' => 4];
+        $form_errors = array_merge($form_errors, check_min_length($fields_to_check_length));
 
-            //Form validation
-            $required_fields = array('email', 'username');
+        // Email validation
+        $form_errors = array_merge($form_errors, check_email($_POST));
 
-            //call the function to check empty field and merge the return data into form_error array
-            $form_errors = array_merge($form_errors, check_empty_fields($required_fields));
-
-            //Fields that requires checking for minimum length
-            $fields_to_check_length = array('username' => 4);
-
-            //call the function to check minimum required length and merge the return data into form_error array
-            $form_errors = array_merge($form_errors, check_min_length($fields_to_check_length));
-
-            //email validation / merge the return data into form_error array
-            $form_errors = array_merge($form_errors, check_email($_POST));
-
-            //validate if file has a valid extension
-            isset($_FILES['avatar']['name']) ? $avatar = $_FILES['avatar']['name'] : $avatar = null;
-
-            if($avatar != null){
-                $form_errors = array_merge($form_errors, isValidImage($avatar));
-            }
-
-            //collect form data and store in variables
-            $email = $_POST['email'];
-            $username = $_POST['username'];
-            $hidden_id = $_POST['hidden_id'];
-
-            $result = false;
-            $emailExistForAnotherUser = $db->query("SELECT email FROM users 
-            WHERE email = '$email' AND id <> '$hidden_id'");
-
-            if($emailExistForAnotherUser->fetch()){
-                $result = flashMessage("Email is already used by another user");
-            }
-
-            if(empty($form_errors) && !$result){
-                try{
-                    $query = "SELECT avatar FROM users WHERE id =:id";
-                    $oldAvatarStatement = $db->prepare($query);
-                    $oldAvatarStatement->execute([':id' => $hidden_id]);
-
-                    if($rs = $oldAvatarStatement->fetch()) {
-                        $oldAvatar = $rs['avatar'];
-                    }
-                    //create SQL update statement
-                    $sqlUpdate = "UPDATE users SET username =:username, email =:email WHERE id =:id";
-
-                    //use PDO prepared to sanitize data
-                    $statement = $db->prepare($sqlUpdate);
-
-                    if($avatar != null) {
-                        //create SQL update statement
-                        $sqlUpdate = "UPDATE users SET username =:username, email =:email, avatar = :avatar WHERE id =:id";
-
-                        $avatar_path = uploadAvatar($username);
-                        if(!$avatar_path){
-                            $avatar_path = "uploads/default.jpg";
-                        }
-                        //use PDO prepared to sanitize data
-                        $statement = $db->prepare($sqlUpdate);
-                        //update the record in the database
-                        $statement->execute(array(':username' => $username, ':email' => $email,
-                            'avatar' => $avatar_path, ':id' => $hidden_id));
-
-                        if(isset($oldAvatar)) {
-                            unlink($oldAvatar);
-                        }
-
-                    }else{
-                        //update the record in the database
-                        $statement->execute(array(':username' => $username, ':email' => $email, ':id' => $hidden_id));
-                    }
-                    //check if one new row was created
-                    if($statement->rowCount() == 1){
-                        $result = "<script type=\"text/javascript\">
-                swal({title:\"Updated!\", text:\"Profile Update Successfully.\", type:\"success\"}, 
-                    function() {
-                        window.location.replace(window.location.href);
-                    });
-                </script>";
-                    }else{
-                        $result = "<script type=\"text/javascript\">
-                swal({title:\"Nothing Happened\", text:\"You have not made any changes.\"}, 
-                function() {
-                    window.location.replace(window.location.href);
-                }
-                );</script>";
-                    }
-
-                }catch (PDOException $ex){
-                    $result = flashMessage("An error occurred in : " .$ex->getMessage());
-                }
-            }
-            else{
-                if(!$result){
-                    if(count($form_errors) == 1){
-                        $result = flashMessage("There was 1 error in the form<br>");
-                    }else{
-                        $result = flashMessage("There were " .count($form_errors). " errors in the form <br>");
-                    }
-                }
-            }
-        }else{
-            //display error
-            $result = "<script type='text/javascript'>
-                      swal('Error','This request originates from an unknown source, posible attack'
-                      ,'error');
-                      </script>";
+        // Validate if the file has a valid extension
+        $avatar = $_FILES['avatar']['name'] ?? null;
+        if ($avatar) {
+            $form_errors = array_merge($form_errors, isValidImage($avatar));
         }
-        
+
+        // Collect form data
+        $email = $_POST['email'];
+        $username = $_POST['username'];
+        $hidden_id = $_POST['hidden_id'];
+
+        $result = false;
+        $query = "SELECT email FROM users WHERE email = :email AND id <> :id";
+        $emailExistStatement = $db->prepare($query);
+        $emailExistStatement->execute([':email' => $email, ':id' => $hidden_id]);
+
+        if ($emailExistStatement->fetch()) {
+            $result = flashMessage("Email is already used by another user");
+        }
+
+        if (empty($form_errors) && !$result) {
+            try {
+                $query = "SELECT avatar FROM users WHERE id = :id";
+                $oldAvatarStatement = $db->prepare($query);
+                $oldAvatarStatement->execute([':id' => $hidden_id]);
+
+                $oldAvatar = $oldAvatarStatement->fetch()['avatar'] ?? null;
+
+                // Update SQL query
+                if ($avatar) {
+                    $avatar_path = uploadAvatar($username);
+                    if (!$avatar_path) {
+                        $avatar_path = "uploads/default.jpg";
+                    }
+
+                    $sqlUpdate = "UPDATE users SET username = :username, email = :email, avatar = :avatar WHERE id = :id";
+                    $statement = $db->prepare($sqlUpdate);
+                    $statement->execute([
+                        ':username' => $username,
+                        ':email' => $email,
+                        ':avatar' => $avatar_path,
+                        ':id' => $hidden_id,
+                    ]);
+
+                    if ($oldAvatar) {
+                        unlink($oldAvatar);
+                    }
+                } else {
+                    $sqlUpdate = "UPDATE users SET username = :username, email = :email WHERE id = :id";
+                    $statement = $db->prepare($sqlUpdate);
+                    $statement->execute([
+                        ':username' => $username,
+                        ':email' => $email,
+                        ':id' => $hidden_id,
+                    ]);
+                }
+
+                // Check if a new row was updated
+                if ($statement->rowCount() === 1) {
+                    $result = "<script type=\"text/javascript\">
+                        swal({title:\"Updated!\", text:\"Profile Update Successfully.\", type:\"success\"}, 
+                            function() { window.location.replace(window.location.href); });
+                    </script>";
+                } else {
+                    $result = "<script type=\"text/javascript\">
+                        swal({title:\"Nothing Happened\", text:\"You have not made any changes.\"}, 
+                            function() { window.location.replace(window.location.href); });
+                    </script>";
+                }
+            } catch (PDOException $ex) {
+                $result = flashMessage("An error occurred: " . $ex->getMessage());
+            }
+        } else {
+            if (!$result) {
+                $error_count = count($form_errors);
+                $result = flashMessage("There " . ($error_count === 1 ? "was 1 error" : "were $error_count errors") . " in the form.<br>");
+            }
+        }
+    } else {
+        $result = "<script type='text/javascript'>
+            swal('Error', 'This request originates from an unknown source, possible attack', 'error');
+        </script>";
+    }
 }
+?>

@@ -3,6 +3,9 @@
 include_once 'resource/Database.php';
 include_once 'resource/utilities.php';
 
+// This should only be set the tif the usere clicks on it in the page. We need to make sure sec is ontop of and onjections 
+
+
 //process the form if the reset password button is clicked
 if(isset($_POST['passwordResetBtn'])){
     //initialize an array to store any error message from the form

@@ -1,0 +1,37 @@
+/* Navbar logo styling */
+.navbar-logo {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end; /* Push the logo to the right */
+    margin-left: auto; /* Ensure spacing from navbar links */
+}
+
+.navbar-logo-img {
+    max-height: 30px; /* Approximate stamp size */
+    width: auto; /* Maintain aspect ratio */
+    transition: transform 0.3s ease; /* Smooth scaling */
+    object-fit: contain; /* Prevent distortion */
+}
+
+/* Hover effect for the logo */
+.navbar-logo-img:hover {
+    transform: scale(1.1); /* Slightly enlarges the logo on hover */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .navbar-logo-img {
+        max-height: 25px; /* Slightly smaller for tablet-sized screens */
+    }
+}
+
+@media (max-width: 576px) {
+    .navbar-logo-img {
+        max-height: 20px; /* Further reduced for small screens */
+    }
+}
+.navbar-logo-img {
+    max-height: 30px !important;
+    width: auto !important;
+    object-fit: contain !important;
+}

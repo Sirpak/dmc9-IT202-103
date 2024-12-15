@@ -14,7 +14,7 @@ if(isset($_POST['signupBtn'])){
     //call the function to check empty field and merge the return data into form_error array
     $form_errors = array_merge($form_errors, check_empty_fields($required_fields));
 
-    //Fields that requires checking for minimum length
+    //Fields the at requires checking for minimum length
     $fields_to_check_length = array('username' => 4, 'password' => 6);
 
     //call the function to check minimum required length and merge the return data into form_error array
@@ -72,6 +72,7 @@ if(isset($_POST['signupBtn'])){
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/resources/css/style.css">
+    <link rel="stylesheet" href="/resources/css/custom.css">
     <title>Register Page</title>
 </head>
 <body>

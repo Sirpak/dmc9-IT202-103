@@ -1,6 +1,8 @@
 <?php
 include_once 'resource/Database.php';
 include_once 'resource/utilities.php';
+include_once 'partials/navbar.php';
+?>
 
 if(isset($_POST['changePasswordBtn'], $_POST['token'])){
     if(validate_token($_POST['token'])){

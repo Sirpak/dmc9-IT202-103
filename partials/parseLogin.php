@@ -2,97 +2,132 @@
 include_once 'resource/Database.php';
 include_once 'resource/utilities.php';
 
-if(isset($_POST['loginBtn'], $_POST['token'])){
+// Enable error reporting for debugging
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+$result = ""; // Initialize result variable
+
+if (isset($_POST['loginBtn'], $_POST['token'])) {
     $config = require __DIR__ . '/../config/app.php';
     $secret = $config['recaptcha']['secret'];
 
+    // ReCaptcha request data
     $recaptcha = [
         'secret' => $secret,
-        'response' => $_POST['g-recaptcha-response']
+        'response' => $_POST['token']
     ];
 
+    // Verify ReCaptcha
     $response = verifyReCaptcha($recaptcha);
 
-    if(isset($response->success) && !$response->success == true){
+    if ($response && isset($response->success) && !$response->success) {
         $result = "<script type='text/javascript'>
-                      swal('Error','ReCaptcha validation failed'
-                      ,'error');
-                      </script>";
-    }
-
-    else if(isset($response->hostname) && !$response->hostname == 'auth.local'){
+                      swal('Error', 'ReCaptcha validation failed', 'error');
+                   </script>";
+    } elseif ($response && isset($response->hostname) && $response->hostname !== $_SERVER['HTTP_HOST']) {
         $result = "<script type='text/javascript'>
-                      swal('Error','Request originates from a different server'
-                      ,'error');
-                      </script>";
+                      swal('Error', 'Request originates from a different server', 'error');
+                   </script>";
     }
-    //validate the token
-    else if(validate_token($_POST['token'])) {
-            //process the form
-            //array to hold errors
-            $form_errors = array();
+    // Validate CSRF Token
+    elseif (validate_token($_POST['token'])) {
+        // Initialize an array to hold form errors
+        $form_errors = [];
 
-            //validate
-            $required_fields = array('username', 'password');
-            $form_errors = array_merge($form_errors, check_empty_fields($required_fields));
+        // Validate required fields
+        $required_fields = ['username', 'password'];
+        $form_errors = array_merge($form_errors, check_empty_fields($required_fields));
 
-            if(empty($form_errors)){
-                //collect form data
-                $user = $_POST['username'];
-                $password = $_POST['password'];
+        if (empty($form_errors)) {
+            // Collect and sanitize form data
+            $user = trim(htmlspecialchars($_POST['username']));
+            $password = trim(htmlspecialchars($_POST['password']));
+            $remember = isset($_POST['remember']) ? $_POST['remember'] : "";
 
-                isset($_POST['remember']) ? $remember = $_POST['remember'] : $remember = "";
+            // Query to check if the user exists
+            $sqlQuery = "SELECT * FROM users WHERE username = :username LIMIT 1";
+            $statement = $db->prepare($sqlQuery);
 
-                //check if user exist in the database
-                $sqlQuery = "SELECT * FROM users WHERE username = :username";
-                $statement = $db->prepare($sqlQuery);
-                $statement->execute(array(':username' => $user));
-
-                if($row = $statement->fetch()){
+            if ($statement->execute([':username' => $user])) {
+                if ($row = $statement->fetch()) {
                     $id = $row['id'];
                     $hashed_password = $row['password'];
                     $username = $row['username'];
                     $activated = $row['activated'];
 
-                    if($activated === "0"){
-
-                        if (checkDuplicateEntries('trash', 'user_id', $id, $db)){
-                            //activated the account
+                    // Check if account is activated
+                    if ($activated === "0") {
+                        if (checkDuplicateEntries('trash', 'user_id', $id, $db)) {
+                            // Activate account
                             $db->exec("UPDATE users SET activated = '1' WHERE id = $id LIMIT 1");
 
-                            //remove info from trash table
+                            // Remove info from trash table
                             $db->exec("DELETE FROM trash WHERE user_id = $id LIMIT 1");
 
-                            //login the user
+                            // Log in the user
                             prepLogin($id, $username, $remember);
-                        }else{
+                        } else {
                             $result = flashMessage("Please activate your account");
                         }
-                    }else{
-                        if(password_verify($password, $hashed_password)){
+                    } else {
+                        // Validate the password
+                        if (password_verify($password, $hashed_password)) {
+                            // Log in the user
                             prepLogin($id, $username, $remember);
-                        }else{
+                        } else {
                             $result = flashMessage("You have entered an invalid password");
                         }
                     }
-                }else{
+                } else {
                     $result = flashMessage("You have entered an invalid username");
                 }
-            }else{
-                if(count($form_errors) == 1){
-                    $result = flashMessage("There was one error in the form ");
-                }else{
-                    $result = flashMessage("There were " .count($form_errors). " error in the form");
-                }
+            } else {
+                $result = flashMessage("Database query error: " . implode(" | ", $statement->errorInfo()));
             }
-        }else{
-            //throw an error
-            if(!$result){
-                $result = "<script type='text/javascript'>
-                          swal('Error','This request originates from an unknown source, posible attack'
-                          ,'error');
-                          </script>";
-            }
+        } else {
+            // Form validation errors
+            $error_count = count($form_errors);
+            $result = flashMessage("There " . ($error_count === 1 ? "was 1 error" : "were $error_count errors") . " in the form");
         }
+    } else {
+        // Invalid CSRF token
+        $result = "<script type='text/javascript'>
+                      swal('Error', 'This request originates from an unknown source, possible attack', 'error');
+                   </script>";
+    }
+}
 
+// Output the result for debugging or response to the client
+if ($result) {
+    echo $result;
+}
+
+/**
+ * Verifies the Google reCAPTCHA response using cURL.
+ *
+ * @param array $recaptcha The ReCaptcha data containing the secret and token.
+ * @return object|null The decoded JSON response from Google, or null on failure.
+ */
+function verifyReCaptcha($recaptcha)
+{
+    $url = "https://www.google.com/recaptcha/api/siteverify";
+    $ch = curl_init();
+
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($recaptcha));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    $response = curl_exec($ch);
+    $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    curl_close($ch);
+
+    if ($http_status === 200) {
+        return json_decode($response);
+    }
+
+    return null;
 }
